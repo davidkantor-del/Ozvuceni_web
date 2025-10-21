@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Zaměstnanci{% endblock %}
+{% block content %}
+<h1>Zaměstnanci (správa hesel)</h1>
+
+<table class="akce-table">
+  <thead>
+    <tr><th>Jméno</th><th>Uživatelské jméno</th><th>Role</th><th>Nastavit heslo</th></tr>
+  </thead>
+  <tbody>
+    {% for z in zamestnanci %}
+    <tr>
+      <td>{{ z.jmeno }}</td>
+      <td>{{ z.username }}</td>
+      <td>{% if z.is_admin %}Admin{% else %}Uživatel{% endif %}</td>
+      <td>
+        <form method="POST" action="{{ url_for('zamestnanec_set_password', id=z.id) }}" class="inline-form" onsubmit="return confirm('Změnit heslo?');">
+          <input type="password" name="new_password" placeholder="nové heslo" required>
+          <button type="submit" class="btn btn-secondary">Uložit</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" style="text-align:center;">Žádní zaměstnanci.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

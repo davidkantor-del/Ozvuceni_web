@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Checklist{% endblock %}
+{% block content %}
+<h1>Checklist – {{ akce.nazev }}</h1>
+
+<p><strong>Datum:</strong> {{ akce.datum }} |
+<strong>Čas:</strong> {{ akce.cas_od or '' }}–{{ akce.cas_do or '' }} |
+<strong>Místo:</strong> {{ akce.misto }}</p>
+
+<div class="actions">
+  <a class="btn btn-secondary" href="{{ url_for('akce_checklist_pdf', id=akce.id) }}">🖨️ Tisk PDF</a>
+  <a class="btn" href="{{ url_for('akce_detail', id=akce.id) }}">← Zpět</a>
+</div>
+
+<form method="POST">
+  <table class="akce-table">
+    <thead>
+      <tr><th>Skupina</th><th>Produkt</th><th>Množství</th><th>✔ Naloženo</th><th>✔ Hotovo</th></tr>
+    </thead>
+    <tbody>
+      {% for ap in akce.produkty %}
+      <tr>
+        <td>{{ ap.produkt.skupina }}</td>
+        <td>{{ ap.produkt.nazev }}</td>
+        <td>{{ ap.mnozstvi|int }} {{ ap.produkt.jednotka }}</td>
+        <td style="text-align:center;">
+          <input type="checkbox" name="nalozeno_{{ ap.id }}" {% if ap.nalozeno %}checked{% endif %}>
+        </td>
+        <td style="text-align:center;">
+          <input type="checkbox" name="hotovo_{{ ap.id }}" {% if ap.hotovo %}checked{% endif %}>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" style="text-align:center;">Žádné položky.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <button type="submit" class="btn btn-primary">Uložit checklist</button>
+</form>
+{% endblock %}

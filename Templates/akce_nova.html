@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Přidat akci{% endblock %}
+{% block content %}
+<h1>Přidat novou akci</h1>
+
+<form method="POST">
+  <label for="nazev">Název akce</label>
+  <input type="text" id="nazev" name="nazev" required>
+
+  <label for="datum">Datum</label>
+  <input type="date" id="datum" name="datum" required>
+
+  <div class="grid-2">
+    <div>
+      <label for="cas_od">Čas od</label>
+      <input type="time" id="cas_od" name="cas_od">
+    </div>
+    <div>
+      <label for="cas_do">Čas do</label>
+      <input type="time" id="cas_do" name="cas_do">
+    </div>
+  </div>
+
+  <label for="misto">Místo</label>
+  <input type="text" id="misto" name="misto" required>
+
+  <label for="poznamka">Poznámka</label>
+  <textarea id="poznamka" name="poznamka"></textarea>
+
+  <h2>Technika / produkty (vyskladní se ze skladu)</h2>
+  {% for skup in skupiny %}
+    <h3>{{ skup|capitalize }}</h3>
+    <div class="grid-3">
+    {% for p in produkty if p.skupina == skup %}
+      <div class="card-inline">
+        <div class="caption">{{ p.nazev }} <small>({{ p.jednotka or 'ks' }})</small></div>
+        <!-- počet kusů po 1 -->
+        <input type="number" min="0" step="1" name="produkt_{{ p.id }}" placeholder="0">
+      </div>
+    {% endfor %}
+    </div>
+  {% endfor %}
+
+  <h2>Zaměstnanci</h2>
+  <div class="grid-3">
+    {% for z in zamestnanci %}
+      <label class="chk"><input type="checkbox" name="zamestnanci[]" value="{{ z.id }}"> {{ z.jmeno }}</label>
+    {% endfor %}
+  </div>
+
+  <button type="submit" class="btn btn-primary">Uložit</button>
+  <a class="btn btn-secondary" href="{{ url_for('index') }}">Zpět</a>
+</form>
+{% endblock %}

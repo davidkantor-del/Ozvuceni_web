@@ -1,0 +1,94 @@
+:root{
+  --c-bg:#eef2f3;
+  --c-card:#fff;
+  --c-text:#333;
+  --c-muted:#777;
+  --c-primary:#1c598e;
+  --c-primary-hover:#14456a;
+  --c-secondary:#27ae60;
+  --c-secondary-hover:#1e874b;
+  --c-danger:#c0392b;
+  --c-danger-hover:#992d21;
+  --radius:14px;
+}
+
+*{box-sizing:border-box}
+body{
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  background:var(--c-bg);
+  margin:0; padding:0;
+  color:var(--c-text);
+}
+.container{
+  max-width:1000px; margin:40px auto;
+  background:var(--c-card); border-radius:var(--radius);
+  box-shadow:0 0 12px rgba(0,0,0,.12);
+  padding:28px;
+}
+.logo{width:120px; display:block; margin:0 auto 18px auto}
+
+.topnav{
+  display:flex; gap:8px; flex-wrap:wrap; justify-content:center;
+  margin-bottom:18px;
+}
+.topnav a{
+  text-decoration:none; color:#fff; background:var(--c-primary);
+  padding:8px 12px; border-radius:8px; font-weight:600;
+}
+.topnav a:hover{ background:var(--c-primary-hover) }
+
+h1,h2,h3{ margin:14px 0; }
+h1{ font-size:1.6rem }
+h2{ font-size:1.2rem; color:var(--c-muted) }
+
+.actions{ margin:12px 0 }
+
+.btn{
+  display:inline-block; padding:9px 14px; border-radius:8px;
+  text-decoration:none; background:#999; color:#fff; font-weight:600;
+}
+.btn-primary{ background:var(--c-primary) }
+.btn-primary:hover{ background:var(--c-primary-hover) }
+.btn-secondary{ background:var(--c-secondary) }
+.btn-secondary:hover{ background:var(--c-secondary-hover) }
+.btn-logout{ background:var(--c-danger) }
+.btn-logout:hover{ background:var(--c-danger-hover) }
+
+.akce-table{
+  width:100%; border-collapse:collapse; margin:8px 0 18px 0;
+}
+.akce-table th{
+  text-align:left; padding:10px;
+  background:var(--c-primary); color:#fff;
+}
+.akce-table td{ padding:8px; border-bottom:1px solid #e5e8eb }
+.akce-table tr:nth-child(even){ background:#fafafa }
+
+.action{ margin:0 6px; text-decoration:none; font-weight:700 }
+.action.edit{ color:#1e87f0 }
+.action.delete{ color:#e74c3c }
+
+form label{ display:block; margin:10px 0 6px 0 }
+form input, form select, form textarea{
+  width:100%; padding:9px; border:1px solid #cfd6dd; border-radius:8px; margin-bottom:12px;
+}
+
+.grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px }
+.grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px }
+@media (max-width:760px){
+  .grid-2, .grid-3{ grid-template-columns:1fr }
+}
+
+.card-inline{
+  border:1px solid #e5e8eb; border-radius:10px; padding:10px;
+  display:flex; align-items:center; gap:10px; justify-content:space-between;
+}
+.card-inline .caption{ font-weight:600 }
+.chk{ display:flex; align-items:center; gap:8px; padding:6px 0 }
+
+.flash-container{ margin:10px 0 }
+.flash{
+  padding:10px; border-radius:8px; color:#fff; font-weight:700; margin-bottom:8px;
+}
+.flash-success{ background:var(--c-secondary) }
+.flash-error{ background:var(--c-danger) }

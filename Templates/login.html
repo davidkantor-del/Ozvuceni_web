@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Přihlášení{% endblock %}
+{% block content %}
+<h1>Přihlášení</h1>
+
+<form method="POST" action="{{ url_for('login') }}" class="form-auth">
+  <label for="username">Uživatelské jméno</label>
+  <input type="text" name="username" id="username" required>
+
+  <label for="password">Heslo</label>
+  <input type="password" name="password" id="password" required>
+
+  <button type="submit" class="btn btn-primary">Přihlásit se</button>
+</form>
+{% endblock %}

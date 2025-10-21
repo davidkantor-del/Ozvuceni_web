@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Produkty{% endblock %}
+{% block content %}
+<h1>Produkty</h1>
+
+<div class="actions">
+  <a href="{{ url_for('edit_produkt', id=0) }}" class="btn btn-primary">➕ Přidat produkt</a>
+  <a href="{{ url_for('sklad') }}" class="btn btn-secondary">📦 Sklad</a>
+  <a href="{{ url_for('index') }}" class="btn">← Akce</a>
+</div>
+
+<table class="akce-table">
+  <thead>
+    <tr><th>Skupina</th><th>Název</th><th>Jednotka</th><th>Akce</th></tr>
+  </thead>
+  <tbody>
+    {% for p in produkty %}
+    <tr>
+      <td>{{ p.skupina }}</td>
+      <td>{{ p.nazev }}</td>
+      <td>{{ p.jednotka }}</td>
+      <td>
+        <a href="{{ url_for('edit_produkt', id=p.id) }}" class="action edit">✏️ Upravit</a>
+        <a href="{{ url_for('delete_produkt', id=p.id) }}" class="action delete" onclick="return confirm('Smazat produkt?');">❌ Smazat</a>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" style="text-align:center;">Žádné produkty.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

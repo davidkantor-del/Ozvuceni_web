@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Sklad{% endblock %}
+{% block content %}
+<h1>Sklad</h1>
+
+<div class="actions">
+  <a href="{{ url_for('naskladnit') }}" class="btn btn-primary">➕ Naskladnit</a>
+  <a href="{{ url_for('vyskladnit') }}" class="btn btn-secondary">📤 Vyskladnit</a>
+  <a href="{{ url_for('produkty') }}" class="btn">← Produkty</a>
+</div>
+
+<table class="akce-table">
+  <thead><tr><th>Skupina</th><th>Produkt</th><th>Jednotka</th><th>Stav</th></tr></thead>
+  <tbody>
+    {% for p in produkty %}
+    <tr>
+      <td>{{ p.skupina }}</td>
+      <td>{{ p.nazev }}</td>
+      <td>{{ p.jednotka }}</td>
+      <td>{{ stav[p.id] }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" style="text-align:center;">Žádné produkty ve skladu.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{% if produkt.id %}Upravit produkt{% else %}Přidat produkt{% endif %}{% endblock %}
+{% block content %}
+<h1>{% if produkt.id %}Upravit produkt{% else %}Přidat produkt{% endif %}</h1>
+
+<form method="POST">
+  <label for="nazev">Název</label>
+  <input type="text" id="nazev" name="nazev" value="{{ produkt.nazev }}" required>
+
+  <label for="jednotka">Jednotka</label>
+  <select id="jednotka" name="jednotka">
+    {% for j in ['ks','m','cm','mm','kg','g','l'] %}
+      <option value="{{ j }}" {% if produkt.jednotka == j %}selected{% endif %}>{{ j }}</option>
+    {% endfor %}
+  </select>
+
+  <label for="skupina">Skupina</label>
+  <select id="skupina" name="skupina" required>
+    <option value="">-- vyber skupinu --</option>
+    {% for s in skupiny %}
+      <option value="{{ s }}" {% if produkt.skupina == s %}selected{% endif %}>{{ s|capitalize }}</option>
+    {% endfor %}
+  </select>
+
+  <button type="submit" class="btn btn-primary">Uložit</button>
+  <a href="{{ url_for('produkty') }}" class="btn">Zpět</a>
+</form>
+{% endblock %}

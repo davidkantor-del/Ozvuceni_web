@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Změna hesla{% endblock %}
+
+{% block content %}
+<h1>Změnit heslo</h1>
+<p><strong>{{ z.jmeno }}</strong> ({{ z.username }})</p>
+
+<form method="POST" class="form-auth" style="max-width:420px;margin:0 auto;text-align:left;">
+  <label for="password">Nové heslo</label>
+  <input type="password" name="password" id="password" required minlength="6">
+
+  <label for="password2">Potvrzení hesla</label>
+  <input type="password" name="password2" id="password2" required minlength="6">
+
+  <div class="actions" style="margin-top:10px;">
+    <button type="submit" class="btn btn-primary">💾 Uložit</button>
+    <a href="{{ url_for('zamestnanci_list') }}" class="btn btn-secondary">← Zpět</a>
+  </div>
+</form>
+{% endblock %}

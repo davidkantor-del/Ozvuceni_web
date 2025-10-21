@@ -1,0 +1,7 @@
+Flask
+Flask-SQLAlchemy
+Flask-SocketIO
+eventlet
+psycopg2-binary
+reportlab
+Werkzeug

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Akce{% endblock %}
+
+{% block content %}
+<h1>Správa akcí</h1>
+
+<div class="actions">
+  {% if privileged %}
+    <a href="{{ url_for('akce_nova') }}" class="btn btn-primary">➕ Přidat akci</a>
+    <a href="{{ url_for('export_pdf') }}" class="btn btn-secondary">📄 Exportovat do PDF</a>
+  {% endif %}
+</div>
+
+<h2>Moje dnešní akce</h2>
+<table class="akce-table">
+  <thead>
+    <tr>
+      <th>Datum</th>
+      <th>Čas</th>
+      <th>Název</th>
+      <th>Místo</th>
+      <th>Docházka</th>
+      <th>Detail</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for a in akce_dnes %}
+    <tr>
+      <td>{{ a.datum }}</td>
+      <td>{{ a.cas_od or '' }}–{{ a.cas_do or '' }}</td>
+      <td>{{ a.nazev }}</td>
+      <td>{{ a.misto }}</td>
+      <td>
+        {% if open_akce_id == a.id %}
+          <form method="POST" action="{{ url_for('ts_stop', akce_id=a.id) }}" style="display:inline;">
+            <button class="btn btn-logout">⏹️ Stop</button>
+          </form>
+        {% else %}
+          <form method="POST" action="{{ url_for('ts_start', akce_id=a.id) }}" style="display:inline;">
+            <button class="btn btn-secondary">▶️ Start</button>
+          </form>
+        {% endif %}
+      </td>
+      <td><a class="action edit" href="{{ url_for('akce_detail', id=a.id) }}">🔎 Otevřít</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" style="text-align:center;">Dnes nemáte žádné akce.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Všechny moje akce</h2>
+<table class="akce-table">
+  <thead>
+  <tr>
+    <th>Datum</th><th>Čas</th><th>Název</th><th>Místo</th><th>Detail</th>
+    {% if privileged %}<th>Správa</th>{% endif %}
+  </tr>
+  </thead>
+  <tbody>
+    {% for a in akce_moje %}
+    <tr>
+      <td>{{ a.datum }}</td>
+      <td>{{ a.cas_od or '' }}–{{ a.cas_do or '' }}</td>
+      <td>{{ a.nazev }}</td>
+      <td>{{ a.misto }}</td>
+      <td>
+        <a class="action edit" href="{{ url_for('akce_detail', id=a.id) }}">🔎 Otevřít</a>
+        <a class="action edit" href="{{ url_for('akce_checklist', id=a.id) }}">☑️ Checklist</a>
+      </td>
+      {% if privileged %}
+      <td>
+        <a class="action edit" href="{{ url_for('akce_upravit', id=a.id) }}">✏️ Upravit</a>
+        <a class="action delete" href="{{ url_for('akce_smazat', id=a.id) }}" onclick="return confirm('Opravdu smazat tuto akci?');">❌ Smazat</a>
+      </td>
+      {% endif %}
+    </tr>
+    {% else %}
+      <tr><td colspan="{% if privileged %}6{% else %}5{% endif %}" style="text-align:center;">Žádné akce.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if privileged %}
+<h2>Všechny akce (správa)</h2>
+<table class="akce-table">
+  <thead><tr>
+    <th>Datum</th><th>Čas</th><th>Název</th><th>Místo</th><th>Správa</th>
+  </tr></thead>
+  <tbody>
+    {% for a in akce_all %}
+    <tr>
+      <td>{{ a.datum }}</td>
+      <td>{{ a.cas_od or '' }}–{{ a.cas_do or '' }}</td>
+      <td>{{ a.nazev }}</td>
+      <td>{{ a.misto }}</td>
+      <td>
+        <a class="action edit" href="{{ url_for('akce_detail', id=a.id) }}">🔎 Otevřít</a>
+        <a class="action edit" href="{{ url_for('akce_checklist', id=a.id) }}">☑️ Checklist</a>
+        <a class="action edit" href="{{ url_for('akce_upravit', id=a.id) }}">✏️ Upravit</a>
+        <a class="action delete" href="{{ url_for('akce_smazat', id=a.id) }}" onclick="return confirm('Opravdu smazat tuto akci?');">❌ Smazat</a>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" style="text-align:center;">Žádné akce.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

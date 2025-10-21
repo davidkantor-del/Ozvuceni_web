@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Registrace{% endblock %}
+{% block content %}
+<h1>Registrace</h1>
+
+<form method="POST" action="{{ url_for('registrace') }}" class="form-auth">
+  <label for="username">Uživatelské jméno</label>
+  <input type="text" name="username" id="username" required>
+
+  <label for="password">Heslo</label>
+  <input type="password" name="password" id="password" required>
+
+  <button type="submit" class="btn btn-primary">Registrovat</button>
+</form>
+
+<p style="text-align:center;">Už máš účet? <a href="{{ url_for('login') }}">Přihlas se</a></p>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Detail akce{% endblock %}
+{% block content %}
+<h1>{{ akce.nazev }}</h1>
+
+<p><strong>Datum:</strong> {{ akce.datum }}
+ | <strong>Čas:</strong> {{ akce.cas_od or '' }}–{{ akce.cas_do or '' }}
+ | <strong>Místo:</strong> {{ akce.misto }}</p>
+{% if akce.poznamka %}<p><strong>Poznámka:</strong> {{ akce.poznamka }}</p>{% endif %}
+
+<div class="actions">
+  <a class="btn btn-secondary" href="{{ url_for('akce_checklist', id=akce.id) }}">☑️ Checklist</a>
+  <a class="btn" href="{{ url_for('index') }}">← Zpět</a>
+</div>
+
+<h2>Produkty</h2>
+<table class="akce-table">
+  <thead><tr><th>Skupina</th><th>Produkt</th><th>Množství</th><th>J.</th></tr></thead>
+  <tbody>
+    {% for ap in akce.produkty %}
+    <tr>
+      <td>{{ ap.produkt.skupina }}</td>
+      <td>{{ ap.produkt.nazev }}</td>
+      <td>{{ ap.mnozstvi|int }}</td>
+      <td>{{ ap.produkt.jednotka }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" style="text-align:center;">Žádné produkty.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Zaměstnanci</h2>
+<ul>
+  {% for j in jmena_zam %}
+    <li>{{ j }}</li>
+  {% else %}
+    <li>Žádní přiřazení zaměstnanci.</li>
+  {% endfor %}
+</ul>
+
+<h2>Docházka (moje)</h2>
+{% if open_akce_id == akce.id %}
+<form method="POST" action="{{ url_for('ts_stop', akce_id=akce.id) }}">
+  <button class="btn btn-logout">⏹️ Stop</button>
+</form>
+{% else %}
+<form method="POST" action="{{ url_for('ts_start', akce_id=akce.id) }}">
+  <button class="btn btn-secondary">▶️ Start</button>
+</form>
+{% endif %}
+
+{% endblock %}

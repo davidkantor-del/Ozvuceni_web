@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Hodiny{% endblock %}
+
+{% block content %}
+<h1>⏱️ Hodiny – přehled</h1>
+
+<div class="actions" style="margin-bottom:16px;">
+  <form method="POST" action="{{ url_for('hodiny_delete_all') }}" onsubmit="return confirm('Opravdu smazat VŠECHNY hodinové záznamy?');" style="display:inline;">
+    <button type="submit" class="btn btn-logout">🗑️ Smazat všechny hodiny</button>
+  </form>
+</div>
+
+{% if running and running|length > 0 %}
+  <h2>Právě běžící záznamy</h2>
+  <table class="akce-table" style="margin-bottom:24px;">
+    <thead><tr><th>Zaměstnanec</th><th>Akce</th><th>Start</th></tr></thead>
+    <tbody>
+      {% for ts in running %}
+      <tr>
+        <td>{{ ts.zamestnanec.jmeno }}</td>
+        <td>{{ ts.akce.nazev }}</td>
+        <td>{{ ts.start.strftime('%Y-%m-%d %H:%M') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+
+<h2>Součty podle zaměstnanců</h2>
+<table class="akce-table" style="margin-bottom:24px;">
+  <thead><tr><th>Zaměstnanec</th><th>Celkem hodin</th></tr></thead>
+  <tbody>
+  {% for zid, info in data.items() %}
+    <tr>
+      <td>{{ info.jmeno }}</td>
+      <td>{{ '%.1f'|format(info.total) }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="2" style="text-align:center;">Žádná data.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Rozpad podle akcí (u každého zaměstnance)</h2>
+<table class="akce-table" style="margin-bottom:24px;">
+  <thead><tr><th>Zaměstnanec</th><th>Akce</th><th>Hodin</th></tr></thead>
+  <tbody>
+  {% for zid, info in data.items() %}
+    {% for rec in info.akce %}
+      <tr>
+        <td>{{ info.jmeno }}</td>
+        <td>{{ rec.nazev }}</td>
+        <td>{{ '%.1f'|format(rec.hours) }}</td>
+      </tr>
+    {% else %}
+      <tr><td>{{ info.jmeno }}</td><td>–</td><td>0.0</td></tr>
+    {% endfor %}
+  {% else %}
+    <tr><td colspan="3" style="text-align:center;">Žádná data.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Mazání hodin podle akce</h2>
+<table class="akce-table">
+  <thead>
+    <tr><th>Datum</th><th>Akce</th><th>Celkem hodin</th><th>Akce</th></tr>
+  </thead>
+  <tbody>
+    {% for row in actions %}
+    <tr>
+      <td>{{ row.datum }}</td>
+      <td>{{ row.nazev }}</td>
+      <td>{{ '%.1f'|format(row.hours) }}</td>
+      <td>
+        <form method="POST" action="{{ url_for('hodiny_delete_by_akce', akce_id=row.akce_id) }}"
+              onsubmit="return confirm('Smazat všechny hodinové záznamy pro akci {{ row.nazev|e }}?');">
+          <button type="submit" class="btn btn-logout">🗑️ Smazat hodiny této akce</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" style="text-align:center;">Žádné hodinové záznamy.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
