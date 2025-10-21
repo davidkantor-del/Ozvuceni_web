@@ -1,27 +1,11 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{% block title %}Ozvučení & Osvětlení{% endblock %}</title>
-
-  <!-- Hlavní styl -->
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
-  <!-- PWA manifest -->
-  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-  <meta name="theme-color" content="#1c598e">
-
-  <!-- iOS podpora (ikona a fullscreen režim) -->
-  <link rel="apple-touch-icon" href="{{ url_for('static', filename='logo.png') }}">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-
-  <!-- Socket.IO klient (poskytuje Flask-SocketIO) -->
-  <script src="/socket.io/socket.io.js"></script>
-
-  <!-- Naše JS (realtime + PWA registrace) -->
-  <script defer src="{{ url_for('static', filename='app.js') }}"></script>
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
   <div class="container">
@@ -33,19 +17,26 @@
     <nav class="topnav">
       <a href="{{ url_for('index') }}">📅 Akce</a>
 
-      {% if session.get('is_admin') or (session.get('display_name','').lower() == 'roman labaj') %}
-        <a href="{{ url_for('produkty') }}">🧰 Produkty</a>
-        <a href="{{ url_for('sklad') }}">📦 Sklad</a>
-        <a href="{{ url_for('zamestnanci') }}">👥 Zaměstnanci</a>
-        <a href="{{ url_for('hodiny') }}">⏱️ Hodiny</a>
-      {% else %}
-        <a href="{{ url_for('hodiny') }}">⏱️ Hodiny</a>
-      {% endif %}
+      {% if current_user.is_authenticated %}
+        {# Admin + Roman: mají přístup do skladu, produktů a přehledu hodin #}
+        {% if current_user.role in ['admin', 'roman'] %}
+          <a href="{{ url_for('produkty') }}">🧰 Produkty</a>
+          <a href="{{ url_for('sklad') }}">📦 Sklad</a>
+          <a href="{{ url_for('hodiny_overview') }}">⏱ Hodiny</a>
+        {% endif %}
 
-      <a href="{{ url_for('logout') }}">🚪 Odhlásit</a>
+        {# Správa zaměstnanců jen pro admina #}
+        {% if current_user.role == 'admin' %}
+          <a href="{{ url_for('zamestnanci') }}">👥 Zaměstnanci</a>
+        {% endif %}
+
+        <a href="{{ url_for('logout') }}">🚪 Odhlásit</a>
+      {% else %}
+        <a href="{{ url_for('login') }}">🔑 Přihlásit</a>
+      {% endif %}
     </nav>
 
-    <!-- Flash zprávy -->
+    <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <div class="flash-container">
@@ -56,9 +47,14 @@
       {% endif %}
     {% endwith %}
 
-    <!-- Obsah stránek -->
+    <!-- Obsah stránky -->
     {% block content %}{% endblock %}
 
+    <footer class="footer">
+      © {{ (now().year if now is defined) or 2025 }} Ozvučení & Osvětlení
+    </footer>
   </div>
+
+  {% block extra_scripts %}{% endblock %}
 </body>
 </html>
