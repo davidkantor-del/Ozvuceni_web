@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Produkty{% endblock %}
+
 {% block content %}
 <h1>Produkty</h1>
 
@@ -11,21 +12,35 @@
 
 <table class="akce-table">
   <thead>
-    <tr><th>Skupina</th><th>Název</th><th>Jednotka</th><th>Akce</th></tr>
+    <tr>
+      <th>Skupina</th>
+      <th>Název</th>
+      <th>Jednotka</th>
+      <th style="width:220px;">Akce</th>
+    </tr>
   </thead>
   <tbody>
     {% for p in produkty %}
     <tr>
-      <td>{{ p.skupina }}</td>
+      <td>{{ p.skupina or '—' }}</td>
       <td>{{ p.nazev }}</td>
-      <td>{{ p.jednotka }}</td>
+      <td>{{ p.jednotka or 'ks' }}</td>
       <td>
         <a href="{{ url_for('edit_produkt', id=p.id) }}" class="action edit">✏️ Upravit</a>
-        <a href="{{ url_for('delete_produkt', id=p.id) }}" class="action delete" onclick="return confirm('Smazat produkt?');">❌ Smazat</a>
+
+        <!-- Mazání přes POST (odpovídá route /produkt/delete/<id> methods=["POST"]) -->
+        <form method="POST"
+              action="{{ url_for('delete_produkt', id=p.id) }}"
+              style="display:inline;"
+              onsubmit="return confirm('Smazat produkt {{ p.nazev|e }}?');">
+          <button class="action delete" type="submit">❌ Smazat</button>
+        </form>
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="4" style="text-align:center;">Žádné produkty.</td></tr>
+    <tr>
+      <td colspan="4" style="text-align:center;">Žádné produkty.</td>
+    </tr>
     {% endfor %}
   </tbody>
 </table>

@@ -27,6 +27,24 @@ db = SQLAlchemy(app)
 # Kategorie techniky
 SKUPINY = ["kabeláž", "monitory", "světla", "repro", "nářadí"]
 
+# Zobrazovaná jména (bez nutnosti měnit DB schéma)
+FULL_NAMES = {
+    "roman": "Roman Labaj",
+    "lukas": "Lukáš Vodrada",
+    "pavel": "Pavel Lach",
+    "vaclav_f": "Václav Fiksek",
+    "vaclav_j": "Václav Janeček",
+    "petr_l": "Petr Lach",
+    "rostislav": "Rostislav Staroň",
+    "stepan": "Štěpán Turoň",
+    "michal": "Michal Pyszko",
+    "jakub": "Jakub Lipowski",
+    "ondrej": "Ondřej Hanisch",
+    "david": "David Kantor",
+    "robert": "Robert Zaremba",
+    "admin": "Administrator",
+}
+
 # -----------------------------------------------------------------------------
 # MODELY
 # -----------------------------------------------------------------------------
@@ -36,6 +54,19 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), default="staff")  # admin / manager / staff
     active = db.Column(db.Boolean, default=True)
+
+    # kompatibilita se šablonami
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_admin(self):
+        return self.role == "admin"
+
+    @property
+    def jmeno(self):
+        return FULL_NAMES.get(self.username, self.username)
 
     def set_password(self, pw: str):
         self.password_hash = generate_password_hash(pw)
@@ -47,9 +78,9 @@ class User(db.Model):
 class Akce(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nazev = db.Column(db.String(200), nullable=False)
-    datum = db.Column(db.String(50), nullable=False)           # YYYY-MM-DD
-    cas_od = db.Column(db.String(10), nullable=True)           # HH:MM
-    cas_do = db.Column(db.String(10), nullable=True)           # HH:MM
+    datum = db.Column(db.String(50), nullable=False)            # YYYY-MM-DD
+    cas_od = db.Column(db.String(10), nullable=True)            # HH:MM
+    cas_do = db.Column(db.String(10), nullable=True)            # HH:MM
     misto = db.Column(db.String(200), nullable=False)
     poznamka = db.Column(db.Text, nullable=True)
     vytvoreno = db.Column(db.DateTime, default=datetime.now)
@@ -78,6 +109,10 @@ class AkceProdukt(db.Model):
     produkt_id = db.Column(db.Integer, db.ForeignKey("produkt.id"), nullable=False)
     mnozstvi = db.Column(db.Float, nullable=False)
 
+    # vztahy pro šablony (akce.produkty, ap.produkt)
+    akce = db.relationship("Akce", backref="produkty")
+    produkt = db.relationship("Produkt")
+
 
 class AkceZamestnanec(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -98,7 +133,7 @@ class Hodiny(db.Model):
 # -----------------------------------------------------------------------------
 DEFAULT_USERS = [
     ("admin", "admin", "admin123"),            # admin – plná práva
-    ("roman", "manager", "roman123"),          # Roman Labaj – i sklad a přiřazování
+    ("roman", "manager", "roman123"),          # Roman Labaj – manager (má i sklad)
     ("lukas", "staff", "123456"),
     ("pavel", "staff", "123456"),
     ("vaclav_f", "staff", "123456"),
@@ -120,6 +155,23 @@ with app.app_context():
             u.set_password(pwd)
             db.session.add(u)
     db.session.commit()
+
+# -----------------------------------------------------------------------------
+# CONTEXT pro šablony (current_user, now)
+# -----------------------------------------------------------------------------
+@app.context_processor
+def inject_globals():
+    u = None
+    uid = session.get("user_id")
+    if uid:
+        u = User.query.get(uid)
+    # jednoduchý anonymní objekt, aby šablona mohla dělat current_user.is_authenticated i když nikdo není přihlášen
+    if not u:
+        class _Anon:
+            is_authenticated = False
+            role = None
+        u = _Anon()
+    return {"current_user": u, "now": datetime.now}
 
 # -----------------------------------------------------------------------------
 # HELPERY
@@ -181,10 +233,15 @@ def uloz_produkty_k_akci(akce: Akce, form, produkty):
                 db.session.add(Sklad(produkt_id=p.id, akce_id=akce.id, typ="vyskladneni", mnozstvi=qty))
 
 def uloz_zamestnance_k_akci(akce: Akce, form):
+    # šablony posílají checkboxy name="zamestnanci[]" value="<id>"
     AkceZamestnanec.query.filter_by(akce_id=akce.id).delete()
-    for u in User.query.filter(User.active==True).all():
-        if form.get(f"zam_{u.id}") == "on":
-            db.session.add(AkceZamestnanec(akce_id=akce.id, user_id=u.id))
+    ids = form.getlist("zamestnanci[]")
+    for sid in ids:
+        try:
+            uid = int(sid)
+            db.session.add(AkceZamestnanec(akce_id=akce.id, user_id=uid))
+        except Exception:
+            pass
 
 # -----------------------------------------------------------------------------
 # LOGIN / LOGOUT
@@ -214,8 +271,32 @@ def logout():
 @app.route("/")
 @login_required
 def index():
-    akce = Akce.query.order_by(Akce.vytvoreno.desc()).all()
-    return render_template("index.html", akce=akce, user=current_user())
+    u = current_user()
+    today = date.today().strftime("%Y-%m-%d")
+
+    # Akce, na kterých je uživatel přiřazen
+    akce_moje = db.session.query(Akce)\
+        .join(AkceZamestnanec, Akce.id == AkceZamestnanec.akce_id)\
+        .filter(AkceZamestnanec.user_id == u.id)\
+        .order_by(Akce.vytvoreno.desc()).all()
+
+    akce_dnes = [a for a in akce_moje if a.datum == today]
+
+    # Akce pro správu (admin/manager)
+    privileged = u.role in ("admin", "manager")
+    akce_all = Akce.query.order_by(Akce.vytvoreno.desc()).all() if privileged else []
+
+    running = Hodiny.query.filter_by(user_id=u.id, end=None).first()
+    open_akce_id = running.akce_id if running else None
+
+    return render_template(
+        "index.html",
+        akce_dnes=akce_dnes,
+        akce_moje=akce_moje,
+        akce_all=akce_all,
+        privileged=privileged,
+        open_akce_id=open_akce_id
+    )
 
 # -----------------------------------------------------------------------------
 # AKCE – CRUD
@@ -225,7 +306,7 @@ def index():
 @require_role("admin", "manager")
 def akce_nova():
     produkty = Produkt.query.order_by(Produkt.skupina, Produkt.nazev).all()
-    users = User.query.filter_by(active=True).order_by(User.username).all()
+    zam = User.query.filter_by(active=True).order_by(User.username).all()
     if request.method == "POST":
         a = Akce(
             nazev=request.form["nazev"],
@@ -241,7 +322,7 @@ def akce_nova():
         db.session.commit()
         flash("Akce vytvořena a položky vyskladněny.", "success")
         return redirect(url_for("index"))
-    return render_template("akce_nova.html", produkty=produkty, users=users, skupiny=SKUPINY)
+    return render_template("akce_nova.html", produkty=produkty, zamestnanci=zam, skupiny=SKUPINY)
 
 @app.route("/akce/upravit/<int:id>", methods=["GET", "POST"])
 @login_required
@@ -249,7 +330,11 @@ def akce_nova():
 def akce_upravit(id):
     a = Akce.query.get_or_404(id)
     produkty = Produkt.query.order_by(Produkt.skupina, Produkt.nazev).all()
-    users = User.query.filter_by(active=True).order_by(User.username).all()
+    zam = User.query.filter_by(active=True).order_by(User.username).all()
+
+    # stav (kolik je u akce už navázáno)
+    exist = AkceProdukt.query.filter_by(akce_id=a.id).all()
+    stav = {ap.produkt_id: int(ap.mnozstvi) for ap in exist}
     prirazeni_ids = {z.user_id for z in AkceZamestnanec.query.filter_by(akce_id=a.id).all()}
 
     if request.method == "POST":
@@ -260,27 +345,45 @@ def akce_upravit(id):
         a.misto = request.form["misto"]
         a.poznamka = request.form.get("poznamka", "")
 
+        # produkty – vrátit a přepsat
         vrat_produkty_a_smaz_vazby(a)
         uloz_produkty_k_akci(a, request.form, produkty)
+        # zaměstnanci
         uloz_zamestnance_k_akci(a, request.form)
 
         db.session.commit()
         flash("Akce upravena.", "success")
-        return redirect(url_for("index"))
+        return redirect(url_for("akce_detail", id=a.id))
 
-    return render_template("akce_upravit.html", akce=a, produkty=produkty, users=users, prirazeni_ids=prirazeni_ids, skupiny=SKUPINY)
+    return render_template(
+        "akce_upravit.html",
+        akce=a,
+        produkty=produkty,
+        zamestnanci=zam,
+        prirazeni_ids=prirazeni_ids,
+        skupiny=SKUPINY,
+        stav=stav
+    )
 
 @app.route("/akce/detail/<int:id>")
 @login_required
 def akce_detail(id):
     a = Akce.query.get_or_404(id)
+    # jména přiřazených
     prirazeni = db.session.query(User).join(AkceZamestnanec, User.id==AkceZamestnanec.user_id)\
                 .filter(AkceZamestnanec.akce_id==a.id).all()
-    polozky = db.session.query(AkceProdukt, Produkt).join(Produkt, AkceProdukt.produkt_id==Produkt.id)\
-                .filter(AkceProdukt.akce_id==a.id).all()
+    jmena_zam = [z.jmeno for z in prirazeni]
+
     u = current_user()
-    moje = Hodiny.query.filter_by(akce_id=a.id, user_id=u.id).order_by(Hodiny.id.desc()).all()
-    return render_template("akce_detail.html", akce=a, prirazeni=prirazeni, polozky=polozky, moje_hodiny=moje, user=u)
+    running = Hodiny.query.filter_by(user_id=u.id, end=None).first()
+    open_akce_id = running.akce_id if running else None
+
+    return render_template(
+        "akce_detail.html",
+        akce=a,
+        jmena_zam=jmena_zam,
+        open_akce_id=open_akce_id
+    )
 
 @app.route("/akce/smazat/<int:id>")
 @login_required
@@ -295,7 +398,7 @@ def akce_smazat(id):
     return redirect(url_for("index"))
 
 # -----------------------------------------------------------------------------
-# HODINY (přihlášení jen v den akce; start korigovaný)
+# HODINY / DOCHÁZKA (přihlášení jen v den akce, start vázaný na čas akce)
 # -----------------------------------------------------------------------------
 def can_check_today(a: Akce) -> bool:
     try:
@@ -318,10 +421,11 @@ def compute_start_from_rules(a: Akce, clicked: datetime) -> datetime:
         candidate += timedelta(minutes=30)
     return candidate
 
-@app.route("/akce/<int:id>/checkin", methods=["POST"])
+# aliasy, které volají šablony (index/detail): ts_start / ts_stop
+@app.route("/akce/<int:akce_id>/ts_start", methods=["POST"])
 @login_required
-def akce_checkin(id):
-    a = Akce.query.get_or_404(id)
+def ts_start(akce_id):
+    a = Akce.query.get_or_404(akce_id)
     u = current_user()
     if not can_check_today(a):
         flash("Na akci se lze přihlásit jen v den konání.", "error")
@@ -335,10 +439,10 @@ def akce_checkin(id):
     flash(f"Započítáno od {start_calc.strftime('%H:%M')}.", "success")
     return redirect(url_for("akce_detail", id=a.id))
 
-@app.route("/akce/<int:id>/checkout", methods=["POST"])
+@app.route("/akce/<int:akce_id>/ts_stop", methods=["POST"])
 @login_required
-def akce_checkout(id):
-    a = Akce.query.get_or_404(id)
+def ts_stop(akce_id):
+    a = Akce.query.get_or_404(akce_id)
     u = current_user()
     rec = Hodiny.query.filter_by(akce_id=a.id, user_id=u.id, end=None).first()
     if not rec:
@@ -363,29 +467,66 @@ def hodiny_overview():
     if u.role not in ("admin", "manager"):
         q = q.filter(User.id==u.id)
     zaznamy = q.order_by(Hodiny.id.desc()).all()
-    return render_template("hodiny.html", zaznamy=zaznamy, user=u)
 
-@app.route("/hodiny/reset-akce/<int:akce_id>", methods=["POST"])
-@login_required
-@require_role("admin", "manager")
-def hodiny_reset_akce(akce_id):
-    Hodiny.query.filter_by(akce_id=akce_id).delete()
-    db.session.commit()
-    flash("Hodiny pro akci smazány.", "success")
-    return redirect(url_for("hodiny_overview"))
+    # data pro souhrny
+    data = {}
+    for h, usr, akce in zaznamy:
+        if usr.id not in data:
+            data[usr.id] = {"jmeno": usr.jmeno, "total": 0.0, "akce": []}
+        hours = (h.minuty or 0) / 60.0
+        data[usr.id]["total"] += hours
+        data[usr.id]["akce"].append({"nazev": akce.nazev, "hours": hours})
 
-@app.route("/hodiny/reset-vse", methods=["POST"])
+    # běžící
+    running = db.session.query(Hodiny, User, Akce)\
+        .join(User, Hodiny.user_id==User.id)\
+        .join(Akce, Hodiny.akce_id==Akce.id)\
+        .filter(Hodiny.end==None).all()
+
+    # součty po akcích pro mazání
+    actions = db.session.query(
+        Akce.id.label("akce_id"),
+        Akce.nazev.label("nazev"),
+        Akce.datum.label("datum"),
+        db.func.sum(Hodiny.minuty).label("minutes")
+    ).join(Hodiny, Akce.id==Hodiny.akce_id)\
+     .group_by(Akce.id).all()
+
+    actions_fmt = []
+    for row in actions:
+        hours = (row.minutes or 0)/60.0
+        actions_fmt.append({"akce_id": row.akce_id, "nazev": row.nazev, "datum": row.datum, "hours": hours})
+
+    return render_template("hodiny.html", zaznamy=zaznamy, data=data, running=running, actions=actions_fmt)
+
+# aliasy přesně podle šablon
+@app.route("/hodiny/delete-all", methods=["POST"])
 @login_required
 @require_role("admin")
-def hodiny_reset_vse():
+def hodiny_delete_all():
     Hodiny.query.delete()
     db.session.commit()
     flash("Všechny hodiny smazány.", "success")
     return redirect(url_for("hodiny_overview"))
 
+@app.route("/hodiny/delete-by-akce/<int:akce_id>", methods=["POST"])
+@login_required
+@require_role("admin", "manager")
+def hodiny_delete_by_akce(akce_id):
+    Hodiny.query.filter_by(akce_id=akce_id).delete()
+    db.session.commit()
+    flash("Hodiny pro akci smazány.", "success")
+    return redirect(url_for("hodiny_overview"))
+
 # -----------------------------------------------------------------------------
-# CHECKLIST PDF (s “okýnky”)
+# CHECKLIST PDF + alias pro odkaz v šablonách
 # -----------------------------------------------------------------------------
+@app.route("/akce/<int:id>/checklist")
+@login_required
+def akce_checklist(id):
+    # odkaz v UI vede na HTML routu – tady rovnou přesměrujeme na PDF
+    return redirect(url_for("akce_checklist_pdf", id=id))
+
 @app.route("/akce/<int:id>/checklist.pdf")
 @login_required
 def akce_checklist_pdf(id):
@@ -411,7 +552,7 @@ def akce_checklist_pdf(id):
     c.setLineWidth(0.6)
     c.line(20*mm, y, w-20*mm, y); y -= 6*mm
     c.setFont("Helvetica-Bold", 11)
-    c.drawString(22*mm, y, "☐")               # “okýnko” (tiskem to vypadá jako čtvereček)
+    c.drawString(22*mm, y, "☐")
     c.drawString(30*mm, y, "Produkt")
     c.drawRightString(w-70*mm, y, "Požad.")
     c.drawRightString(w-40*mm, y, "Nab.")
@@ -425,7 +566,6 @@ def akce_checklist_pdf(id):
     for ap, p in polozky:
         if y < 30*mm:
             c.showPage(); y = h - 20*mm; c.setFont("Helvetica", 11)
-        # “okýnko”
         c.rect(22*mm, y-3*mm, 4*mm, 4*mm, stroke=1, fill=0)
         c.drawString(30*mm, y, p.nazev.upper())
         c.drawRightString(w-70*mm, y, f"{int(ap.mnozstvi)} {p.jednotka}")
@@ -447,7 +587,7 @@ def akce_checklist_pdf(id):
 @login_required
 def produkty():
     produkty_list = Produkt.query.order_by(Produkt.skupina, Produkt.nazev).all()
-    return render_template("produkty.html", produkty=produkty_list, skupiny=SKUPINY, user=current_user())
+    return render_template("produkty.html", produkty=produkty_list, skupiny=SKUPINY)
 
 @app.route("/produkt/edit/<int:id>", methods=["GET", "POST"])
 @login_required
@@ -487,7 +627,7 @@ def delete_produkt(id):
 def sklad():
     produkty_list = Produkt.query.order_by(Produkt.skupina, Produkt.nazev).all()
     stav = {p.id: stav_skladu(p.id) for p in produkty_list}
-    return render_template("sklad.html", produkty=produkty_list, stav=stav, skupiny=SKUPINY, user=current_user())
+    return render_template("sklad.html", produkty=produkty_list, stav=stav, skupiny=SKUPINY)
 
 @app.route("/naskladnit", methods=["GET", "POST"])
 @login_required
@@ -524,26 +664,27 @@ def vyskladnit():
 # -----------------------------------------------------------------------------
 @app.route("/zamestnanci")
 @login_required
-@require_role("admin", "manager")  # list může vidět i manager
+@require_role("admin", "manager")
 def zamestnanci():
     users = User.query.order_by(User.role.desc(), User.username.asc()).all()
-    return render_template("zamestnanci.html", users=users, user=current_user())
+    # šablona očekává pole 'zamestnanci' s jménem, username, is_admin
+    data = [{"id": u.id, "jmeno": u.jmeno, "username": u.username, "is_admin": u.is_admin} for u in users]
+    return render_template("zamestnanci.html", zamestnanci=data)
 
-@app.route("/zamestnanci/heslo/<int:user_id>", methods=["GET", "POST"])
+# přesně jak volá šablona: url_for('zamestnanec_set_password', id=z.id)
+@app.route("/zamestnanci/set-password/<int:id>", methods=["POST"])
 @login_required
 @require_role("admin")
-def zamestnanci_heslo(user_id):
-    u = User.query.get_or_404(user_id)
-    if request.method == "POST":
-        new_pw = request.form.get("password", "").strip()
-        if len(new_pw) < 4:
-            flash("Heslo musí mít aspoň 4 znaky.", "error")
-        else:
-            u.set_password(new_pw)
-            db.session.commit()
-            flash("Heslo změněno.", "success")
-            return redirect(url_for("zamestnanci"))
-    return render_template("zamestnanci_heslo.html", z=u)
+def zamestnanec_set_password(id):
+    u = User.query.get_or_404(id)
+    new_pw = request.form.get("new_password", "").strip()
+    if len(new_pw) < 4:
+        flash("Heslo musí mít aspoň 4 znaky.", "error")
+    else:
+        u.set_password(new_pw)
+        db.session.commit()
+        flash("Heslo změněno.", "success")
+    return redirect(url_for("zamestnanci"))
 
 # -----------------------------------------------------------------------------
 # Export přehledu akcí (PDF)
