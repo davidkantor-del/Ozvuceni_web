@@ -52,6 +52,18 @@ class User(db.Model):
         return check_password_hash(self.password_hash, pw)
 
     @property
+    def is_authenticated(self) -> bool:
+        return True
+
+    @property
+    def is_active(self) -> bool:
+        return bool(self.active)
+
+    @property
+    def is_anonymous(self) -> bool:
+        return False
+
+    @property
     def jmeno(self) -> str:
         return self.display_name or self.username
 

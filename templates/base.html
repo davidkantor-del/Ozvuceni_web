@@ -21,26 +21,25 @@
 
     <!-- Hlavní navigace -->
     <nav class="topnav">
-      <a href="{{ url_for('index') }}">📅 Akce</a>
+  <a href="{{ url_for('index') }}">📅 Akce</a>
 
-      {% if current_user.is_authenticated %}
-        {# Admin + Manager (Roman) mají navíc Produkty/Sklad/Hodiny #}
-        {% if current_user.role in ['admin', 'manager'] %}
-          <a href="{{ url_for('produkty') }}">🧰 Produkty</a>
-          <a href="{{ url_for('sklad') }}">📦 Sklad</a>
-          <a href="{{ url_for('hodiny_overview') }}">⏱ Hodiny</a>
-        {% endif %}
+  {% if current_user and current_user.is_authenticated %}
+    {# Admin + Roman: mají přístup do skladu, produktů a přehledu hodin #}
+    {% if current_user.role in ['admin', 'manager'] %}
+      <a href="{{ url_for('produkty') }}">🧰 Produkty</a>
+      <a href="{{ url_for('sklad') }}">📦 Sklad</a>
+      <a href="{{ url_for('hodiny_overview') }}">⏱ Hodiny</a>
+    {% endif %}
 
-        {# Správa zaměstnanců jen pro admina #}
-        {% if current_user.role == 'admin' %}
-          <a href="{{ url_for('zamestnanci') }}">👥 Zaměstnanci</a>
-        {% endif %}
+    {% if current_user.role == 'admin' %}
+      <a href="{{ url_for('zamestnanci') }}">👥 Zaměstnanci</a>
+    {% endif %}
 
-        <a href="{{ url_for('logout') }}">🚪 Odhlásit</a>
-      {% else %}
-        <a href="{{ url_for('login') }}">🔑 Přihlásit</a>
-      {% endif %}
-    </nav>
+    <a href="{{ url_for('logout') }}">🚪 Odhlásit</a>
+  {% else %}
+    <a href="{{ url_for('login') }}">🔑 Přihlásit</a>
+  {% endif %}
+</nav>
 
     <!-- Flash zprávy -->
     {% with messages = get_flashed_messages(with_categories=true) %}
